@@ -89,9 +89,9 @@ async def timeout_game(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None
         
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"⏰ *Прошло 3 минуты бездействия!*\n\n"
-                 f"Игра автоматически завершена.\n\n"
-                 f"🎮 Нажмите на кнопку ниже, чтобы начать новую игру!",
+            text="⏰ *Прошло 3 минуты бездействия!*\n\n"
+                 "Игра автоматически завершена.\n\n"
+                 "🎮 Нажмите на кнопку ниже, чтобы начать новую игру!",
             parse_mode="Markdown",
             reply_markup=get_play_again_keyboard()
         )
@@ -119,7 +119,7 @@ def new_game(chat_id: int, player_id: int, player_name: str) -> dict:
         "active": True,
         "last_action": datetime.now(),
         "timeout_task": None,
-        "game_message_id": None,  # ID сообщения с игрой
+        "game_message_id": None,
     }
     return games[chat_id]
 
@@ -292,7 +292,7 @@ async def guess_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"🎮 Нажмите на кнопку ниже, чтобы начать новую игру!",
+            text="🎮 Нажмите на кнопку ниже, чтобы начать новую игру!",
             parse_mode="Markdown",
             reply_markup=get_play_again_keyboard()
         )
@@ -387,7 +387,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update_game_message(context, chat_id)
         
         # Уведомление
-        await context.bot.send_message(chat_id=chat_id, text=f"🔄 Водящий заменил слово!")
+        await context.bot.send_message(chat_id=chat_id, text="🔄 Водящий заменил слово!")
 
     elif data == "guessed":
         # Уведомление в чате
@@ -429,7 +429,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         game["current_word"] = random.choice(game["words"])
         
-        await context.bot.send_message(chat_id=chat_id, text=f"⏩ Водящий пропустил слово!")
+        await context.bot.send_message(chat_id=chat_id, text="⏩ Водящий пропустил слово!")
         
         # Обновляем сообщение
         await update_game_message(context, chat_id)
@@ -437,9 +437,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     elif data == "pass_turn":
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"⏰ *Водящий хочет передать ход!*\n\n"
-                 f"Если хотите стать водящим, напишите в чат: `/take_turn`\n\n"
-                 f"*{game['current_player_name]}*, вы остаётесь водящим, пока кто-то не возьмёт ход.",
+            text="⏰ *Водящий хочет передать ход!*\n\n"
+                 "Если хотите стать водящим, напишите в чат: `/take_turn`\n\n"
+                 f"*{game['current_player_name']}*, вы остаётесь водящим, пока кто-то не возьмёт ход.",
             parse_mode="Markdown"
         )
 
