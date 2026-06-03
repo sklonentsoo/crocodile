@@ -169,12 +169,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ======================= ПРОВЕРКА ДОСТУПА =======================
+# РАСКОММЕНТИРУЙТЕ ЭТУ ФУНКЦИЮ ТОЛЬКО ЕСЛИ НУЖНО ОГРАНИЧИТЬ КОНКРЕТНЫЙ ЧАТ
 def is_allowed_chat(chat_id: int) -> bool:
-    """Проверяет, разрешён ли чат (если ALLOWED_CHAT_ID задан)"""
-    if ALLOWED_CHAT_ID is None:
-        return True
-    return str(chat_id) == str(ALLOWED_CHAT_ID)
-
+    """Проверяет, разрешён ли чат (сейчас ВСЕ чаты разрешены)"""
+    # Если хотите ограничить конкретным чатом - раскомментируйте следующую строку
+    # ALLOWED_CHAT_ID = os.environ.get("ALLOWED_CHAT_ID", None)
+    # if ALLOWED_CHAT_ID is None:
+    #     return True
+    # return str(chat_id) == str(ALLOWED_CHAT_ID)
+    
+    # Сейчас бот работает во всех чатах (включая личку)
+    return True
 # ======================= КЛАВИАТУРА =======================
 def get_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура для управления игрой"""
