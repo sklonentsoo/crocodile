@@ -439,7 +439,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             chat_id=chat_id,
             text="⏰ *Водящий хочет передать ход!*\n\n"
                  "Если хотите стать водящим, напишите в чат: `/take_turn`\n\n"
-                 f"*{game['current_player_name']}*, вы остаётесь водящим, пока кто-то не возьмёт ход.",
+                 f"*{game['current_player_name]}*, вы остаётесь водящим, пока кто-то не возьмет ход..."
             parse_mode="Markdown"
         )
 
