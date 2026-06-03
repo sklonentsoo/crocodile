@@ -18,7 +18,7 @@ TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "ВАШ_ТОКЕН_ЗДЕСЬ")
 # Словарь для хранения активных игр
 games: Dict[int, dict] = {}
 
-# ======================= ВСЕГО СЛОВ =======================
+# ======================= СЛОВА =======================
 WORDS = [
     "Крокодил", "Собака", "Кошка", "Слон", "Жираф", "Зебра", "Тигр", "Лев", "Пантера", "Гепард",
     "Медведь", "Волк", "Лиса", "Заяц", "Ёж", "Белка", "Обезьяна", "Кенгуру", "Панда", "Носорог",
@@ -80,7 +80,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Правила:\n"
         "• Один игрок показывает слово жестами\n"
         "• Остальные угадывают в чате\n"
-        "• Нельзя говорить и показывать на предметы\n\n"
+        "• Нельзя говорить и показывать на предметы\n"
+        "• *Водящий получает слово в ЛИЧНЫЕ СООБЩЕНИЯ!*\n\n"
         "*Команды:*\n"
         "/new_game - начать игру\n"
         "/end_game - завершить игру\n"
@@ -101,17 +102,32 @@ async def new_game_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     game = new_game(chat_id, user_id, user_name)
+    
+    # Отправляем слово В ЛИЧНЫЕ СООБЩЕНИЯ водящему
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"🎭 *Ты водящий!*\n\nТвоё слово: *{game['current_word']}*\n\nПоказывай его жестами! Игроки должны угадать в чате.\n\nИспользуй кнопки для управления игрой:",
+            parse_mode="Markdown",
+            reply_markup=get_keyboard()
+        )
+        await update.message.reply_text(f"✅ *{user_name}*, слово отправлено тебе в личные сообщения! 📨\nПоказывай жестами, остальные угадывают в чате.", parse_mode="Markdown")
+    except Exception as e:
+        logger.error(f"Не удалось отправить сообщение {user_name}: {e}")
+        await update.message.reply_text(f"❌ *{user_name}*, не удалось отправить тебе личное сообщение. Убедись, что бот не заблокирован и ты начал с ним диалог (/start у бота в личке).", parse_mode="Markdown")
+        del games[chat_id]
+        return
 
+    # Отправляем сообщение в чат (без слова!)
     text = (
         f"🐊 *Игра КРОКОДИЛ началась!*\n\n"
         f"🎭 *Водящий:* {user_name}\n"
-        f"📖 *Слово:* ||{game['current_word']}||\n\n"
-        f"🤫 Показывайте слово жестами! Игроки пишут ответ в чат."
+        f"🤫 *Слово отправлено водящему в личные сообщения!*\n\n"
+        f"Игроки, угадывайте слово в чате!"
     )
     message = await update.message.reply_text(
         text, 
-        parse_mode="Markdown", 
-        reply_markup=get_keyboard()
+        parse_mode="Markdown"
     )
     games[chat_id]["last_message_id"] = message.message_id
 
@@ -138,6 +154,17 @@ async def end_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await query.answer("Игра завершена")
     else:
         await update.message.reply_text(results, parse_mode="Markdown")
+
+    # Уведомляем водящего в ЛС
+    current_player_id = game["current_player"]
+    try:
+        await context.bot.send_message(
+            chat_id=current_player_id,
+            text=f"🏁 *Игра завершена!*\n\n{results}",
+            parse_mode="Markdown"
+        )
+    except:
+        pass
 
     del games[chat_id]
 
@@ -185,7 +212,7 @@ async def guess_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
         if not game["words"]:
             await update.message.reply_text(
-                f"🎉 *{user_name}* угадал слово «{old_word}»! +1 очко!\n\n🏁 Слова кончились! Игра завершена.",
+                f"🎉 *{user_name}* угадал слово! +1 очко!\n\n🏁 Слова кончились! Игра завершена.",
                 parse_mode="Markdown",
             )
             await end_game(update, context)
@@ -194,10 +221,27 @@ async def guess_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         game["current_word"] = random.choice(game["words"])
         game["current_player"] = user_id
 
+        # Отправляем НОВОЕ слово новому водящему в ЛС
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=f"🎭 *Ты новый водящий!*\n\nТвоё слово: *{game['current_word']}*\n\nПоказывай его жестами! Используй кнопки для управления:",
+                parse_mode="Markdown",
+                reply_markup=get_keyboard()
+            )
+            await update.message.reply_text(f"✅ Слово отправлено новому водящему *{user_name}* в личные сообщения!", parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"Не удалось отправить сообщение {user_name}: {e}")
+            await update.message.reply_text(f"❌ Не удалось отправить слово *{user_name}* в личные сообщения. Игра прервана.", parse_mode="Markdown")
+            await end_game(update, context)
+            return
+
+        # Обновляем сообщение в чате
         text = (
-            f"🎉 *{user_name}* угадал слово «{old_word}»! +1 очко 🎉\n\n"
+            f"🎉 *{user_name}* угадал слово! +1 очко 🎉\n\n"
             f"🎭 *Новый водящий:* {user_name}\n"
-            f"📖 *Новое слово:* ||{game['current_word']}||"
+            f"🤫 *Слово отправлено водящему в личные сообщения!*\n\n"
+            f"Игроки, угадывайте!"
         )
         
         try:
@@ -205,68 +249,35 @@ async def guess_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
                 chat_id=chat_id,
                 message_id=game["last_message_id"],
                 text=text,
-                parse_mode="Markdown",
-                reply_markup=get_keyboard(),
+                parse_mode="Markdown"
             )
         except Exception as e:
             logger.warning(f"Не удалось отредактировать сообщение: {e}")
-            msg = await update.message.reply_text(text, parse_mode="Markdown", reply_markup=get_keyboard())
+            msg = await update.message.reply_text(text, parse_mode="Markdown")
             games[chat_id]["last_message_id"] = msg.message_id
 
-        await update.message.reply_text(f"✅ Правильно! Теперь ты показываешь слово.")
+        await update.message.reply_text(f"✅ Правильно! *{user_name}* теперь водящий. Слово у него в ЛС.", parse_mode="Markdown")
     else:
         await update.message.reply_text(f"❌ Неверно! Попробуйте ещё раз.")
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработка кнопок"""
+    """Обработка кнопок (только для водящего в ЛС)"""
     query = update.callback_query
     await query.answer()
     
-    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
     data = query.data
 
-    # Обработка главного меню
-    if data == "menu_new_game":
-        await query.message.delete()
-        # Создаём "фейковое" обновление для новой игры
-        class FakeMessage:
-            def __init__(self, chat, user):
-                self.chat = chat
-                self.from_user = user
-                self.text = "/new_game"
-            async def reply_text(self, *args, **kwargs):
-                pass
-        
-        class FakeUpdate:
-            def __init__(self, chat, user):
-                self.effective_chat = chat
-                self.effective_user = user
-                self.message = FakeMessage(chat, user)
-        
-        fake_update = FakeUpdate(update.effective_chat, query.from_user)
-        await new_game_command(fake_update, context)
-        return
-        
-    elif data == "menu_rules":
-        await query.edit_message_text(
-            "📖 *Правила игры Крокодил:*\n\n"
-            "1. Водящий показывает слово жестами и мимикой\n"
-            "2. Нельзя произносить слова и звуки\n"
-            "3. Нельзя показывать на предметы\n"
-            "4. Игроки пишут свои версии в чат\n"
-            "5. За угаданное слово угадавший получает 1 очко\n\n"
-            "🎮 *Команды:*\n"
-            "• /new_game - новая игра\n"
-            "• /score - счёт\n"
-            "• /end_game - завершить",
-            parse_mode="Markdown",
-            reply_markup=get_menu_keyboard()
-        )
-        return
+    # Нужно найти чат, где этот пользователь - водящий
+    chat_id = None
+    for cid, game in games.items():
+        if game["active"] and game["current_player"] == user_id:
+            chat_id = cid
+            break
 
-    # Проверка активной игры
-    if chat_id not in games or not games[chat_id]["active"]:
-        await query.edit_message_text("❌ Игра не активна. Нажмите «Новая игра» в меню или используйте /new_game")
+    # Если не нашли игру для этого пользователя
+    if chat_id is None:
+        await query.edit_message_text("❌ У тебя нет активной игры как водящего.")
         return
 
     game = games[chat_id]
@@ -277,37 +288,52 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             game["words"].remove(old_word)
         if not game["words"]:
             await query.edit_message_text("🏁 Слова кончились! Игра завершена.")
-            await end_game(update, context)
+            # Также уведомить в чате
+            for cid, g in games.items():
+                if cid == chat_id:
+                    try:
+                        await context.bot.send_message(chat_id=cid, text="🏁 Слова кончились! Игра завершена.")
+                    except:
+                        pass
+            await end_game(query, context)
             return
         game["current_word"] = random.choice(game["words"])
         text = (
             f"🔄 Слово заменено!\n\n"
-            f"🎭 *Водящий:* {game['players'][game['current_player']]['name']}\n"
-            f"📖 *Новое слово:* ||{game['current_word']}||"
+            f"📖 *Новое слово:* {game['current_word']}\n\n"
+            f"Показывай!"
         )
         await query.edit_message_text(text, parse_mode="Markdown", reply_markup=get_keyboard())
 
     elif data == "guessed":
-        current_player_id = game["current_player"]
-        current_player_name = game["players"][current_player_id]["name"]
-        game["players"][current_player_id]["score"] += 1
-
+        game["players"][user_id]["score"] += 1
+        
         old_word = game["current_word"]
         if old_word in game["words"]:
             game["words"].remove(old_word)
 
         if not game["words"]:
-            await query.edit_message_text(f"🏁 Слова кончились! Водящий {current_player_name} получает очко. Игра окончена.")
-            await end_game(update, context)
+            await query.edit_message_text(f"🏁 Слова кончились! Ты получил +1 очко. Игра окончена.")
+            await end_game(query, context)
             return
 
         game["current_word"] = random.choice(game["words"])
-
+        
         text = (
-            f"✅ Угадано! +1 очко водящему *{current_player_name}*\n\n"
-            f"📖 *Следующее слово:* ||{game['current_word']}||"
+            f"✅ Угадано! +1 очко тебе!\n\n"
+            f"📖 *Следующее слово:* {game['current_word']}\n\n"
+            f"Показывай!"
         )
         await query.edit_message_text(text, parse_mode="Markdown", reply_markup=get_keyboard())
+        
+        # Уведомление в чате
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"✅ Водящий *{game['players'][user_id]['name']}* засчитал угаданное слово! +1 очко ему.\n📖 Слово заменено."
+            )
+        except:
+            pass
 
     elif data == "skip":
         old_word = game["current_word"]
@@ -315,17 +341,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             game["words"].remove(old_word)
         if not game["words"]:
             await query.edit_message_text("🏁 Слова кончились! Игра завершена.")
-            await end_game(update, context)
+            await end_game(query, context)
             return
         game["current_word"] = random.choice(game["words"])
         text = (
             f"⏩ Слово «{old_word}» пропущено.\n\n"
-            f"📖 *Новое слово:* ||{game['current_word']}||"
+            f"📖 *Новое слово:* {game['current_word']}"
         )
         await query.edit_message_text(text, parse_mode="Markdown", reply_markup=get_keyboard())
 
     elif data == "end_game":
-        await end_game(update, context)
+        await end_game(query, context)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Команда /help"""
