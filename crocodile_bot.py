@@ -117,12 +117,11 @@ async def new_game_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         del games[chat_id]
         return
 
-    # Сообщение в чат
+    # Сообщение в чат (БЕЗ ПОДСКАЗКИ)
     await update.message.reply_text(
         f"🐊 *ИГРА НАЧАЛАСЬ!*\n\n"
         f"🎭 *Водящий:* {user_name}\n"
         f"📖 *Слово отправлено водящему в ЛИЧКУ*\n\n"
-        f"💡 *Подсказка:* первая буква слова — *{game['current_word'][0]}*\n\n"
         f"✍️ *Пишите свои варианты в этот чат!*\n"
         f"🏆 *Кто первый угадает — тот победит!*",
         parse_mode="Markdown"
@@ -165,7 +164,7 @@ async def guess_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     
     game = games[chat_id]
     
-    # Водящий не может угадывать своё слово (просто игнорируем, не пишем ничего)
+    # Водящий не может угадывать своё слово (просто игнорируем)
     if user_id == game["current_player"]:
         return
     
@@ -197,7 +196,7 @@ async def guess_word(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         del games[chat_id]
         return
     
-    # Не угадал - НИЧЕГО НЕ ПИШЕМ (молча игнорируем)
+    # Не угадал - НИЧЕГО НЕ ПИШЕМ
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Кнопки для водящего в личке"""
@@ -239,26 +238,24 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             reply_markup=get_keyboard()
         )
         
-        # Обновляем подсказку в чате
+        # Уведомление в чате (БЕЗ ПОДСКАЗКИ)
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"🔄 Водящий заменил слово!\n💡 *Новая подсказка:* первая буква — *{game['current_word'][0]}*",
-            parse_mode="Markdown"
+            text=f"🔄 Водящий заменил слово!"
         )
 
     elif data == "guessed":
-        # Засчитать угаданное (кто-то из игроков угадал)
+        # Засчитать угаданное
         await query.edit_message_text(
-            f"✅ *Угадано!*\n\n🏆 Победитель получает очко!\n\n📖 *Следующее слово:* {game['current_word']}\n\nПоказывай дальше!",
+            f"✅ *Угадано!*\n\n📖 *Следующее слово:* {game['current_word']}\n\nПоказывай!",
             parse_mode="Markdown",
             reply_markup=get_keyboard()
         )
         
-        # Уведомление в чате
+        # Уведомление в чате (БЕЗ ПОДСКАЗКИ)
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"✅ Водящий засчитал угаданное слово!\n💡 *Подсказка:* первая буква — *{game['current_word'][0]}*",
-            parse_mode="Markdown"
+            text=f"✅ Водящий засчитал угаданное слово!"
         )
 
     elif data == "skip":
@@ -280,10 +277,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             reply_markup=get_keyboard()
         )
         
+        # Уведомление в чате (БЕЗ ПОДСКАЗКИ)
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"⏩ Водящий пропустил слово!\n💡 *Новая подсказка:* первая буква — *{game['current_word'][0]}*",
-            parse_mode="Markdown"
+            text=f"⏩ Водящий пропустил слово!"
         )
 
     elif data == "end_game":
